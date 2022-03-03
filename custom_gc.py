@@ -16,8 +16,13 @@ TR_INTERNAL_GEOMETRY_LINES_WIDTH = 4
 TR_INTERNAL_GEOMETRY_REGION_SIZE = 200
 TR_ARROW_KOEFF = 0.3
 
+TR_CONN_POINT_RAD = 10
+TR_CONN_POINT_FONT_SIZE = 20
+TR_CONN_POINT_LABEL_GAP = 5
+
 TR_HEADER_HEIGHT = TR_HEIGHT*(1-1/GOLDEN_RATIO)/2
 TR_FOOTER_HEIGHT = TR_HEADER_HEIGHT
+TR_HEADER_FOOTER_FONT_SIZE = 40
 
 
 def flip_horizontal(point: QPointF, center_point: QPointF) -> QPointF:
@@ -64,7 +69,7 @@ class FooterText(QGraphicsPathItem):
         super().__init__(*args[1:], **kwargs)
 
         self._base_path = QPainterPath()
-        times_font = QFont("Times", 40, QFont.Bold)
+        times_font = QFont("Times", TR_HEADER_FOOTER_FONT_SIZE, QFont.Bold)
         fontMetrics = QFontMetrics(times_font)
         self._footer_text = text
         header_size = fontMetrics.size(0, self._footer_text)
@@ -84,7 +89,7 @@ class HeaderText(QGraphicsPathItem):
         super().__init__(*args[1:], **kwargs)
 
         self._base_path = QPainterPath()
-        times_font = QFont("Times", 40, QFont.Bold)
+        times_font = QFont("Times", TR_HEADER_FOOTER_FONT_SIZE, QFont.Bold)
         fontMetrics = QFontMetrics(times_font)
         self._header_text = text
         header_size = fontMetrics.size(0, self._header_text)
@@ -92,6 +97,79 @@ class HeaderText(QGraphicsPathItem):
         self._base_path.addText(header_text_base_point, times_font, self._header_text)
 
         self._pen = QPen(Qt.black)
+
+        self.setPath(self._base_path)
+        self.setPen(self._pen)
+        self.setBrush(QBrush(Qt.black))
+
+
+class ConnPntLabel(QGraphicsPathItem):
+    def __init__(self, *args, **kwargs):
+        text: str = args[0]
+        orientation: str = args[1]
+        conn_point_coords: QPointF = args[2]
+        super().__init__(*args[3:], **kwargs)
+
+        self._base_path = QPainterPath()
+        times_font = QFont("Times", TR_CONN_POINT_FONT_SIZE, QFont.Bold)
+        fontMetrics = QFontMetrics(times_font)
+        text_size = fontMetrics.size(0, text)
+        base_point = QPointF(0, 0)
+        if orientation == "left":
+            base_point = QPointF(conn_point_coords.x() - TR_CONN_POINT_LABEL_GAP - text_size.width(), conn_point_coords.y() - TR_CONN_POINT_LABEL_GAP)
+        if orientation == "right":
+            base_point = QPointF(conn_point_coords.x() + TR_CONN_POINT_LABEL_GAP, conn_point_coords.y() - TR_CONN_POINT_LABEL_GAP)
+        if orientation == "top":
+            base_point = QPointF(conn_point_coords.x() + TR_CONN_POINT_LABEL_GAP, conn_point_coords.y() - TR_CONN_POINT_LABEL_GAP)
+        if orientation == "bottom":
+            base_point = QPointF(conn_point_coords.x() - TR_CONN_POINT_LABEL_GAP - text_size.width(), conn_point_coords.y() + TR_CONN_POINT_LABEL_GAP + text_size.height())
+        self._base_path.addText(base_point, times_font, text)
+
+        self._pen = QPen(Qt.black)
+
+        self.setPath(self._base_path)
+        self.setPen(self._pen)
+        self.setBrush(QBrush(Qt.black))
+
+
+class ConnPntEllipse(QGraphicsPathItem):
+    def __init__(self, *args, **kwargs):
+        pass
+
+
+class ConnectionPoint(QGraphicsPathItem):
+    def __init__(self, *args, **kwargs):
+        self.center_point: QPointF = args[0]
+        self.orientation: str = args[1]  # "left", "right", "top", "bottom"
+        self.label_text: str = args[2]
+        super().__init__(*args[3:], **kwargs)
+        self.draw_path()
+
+    def draw_path(self):
+        # TR_CONN_POINT_RAD
+        conn_point_center = QPointF(0, 0)
+        if self.orientation == "left":
+            conn_point_center = QPointF(self.center_point.x() - TR_WIDTH/2, self.center_point.y())
+            self.label = ConnPntLabel(self.label_text, self.orientation, conn_point_center)
+        if self.orientation == "right":
+            conn_point_center = QPointF(self.center_point.x() + TR_WIDTH/2, self.center_point.y())
+            self.label = ConnPntLabel(self.label_text, self.orientation, conn_point_center)
+        if self.orientation == "top":
+            conn_point_center = QPointF(self.center_point.x(), self.center_point.y() - TR_HEIGHT/2)
+            self.label = ConnPntLabel(self.label_text, self.orientation, conn_point_center)
+        if self.orientation == "bottom":
+            conn_point_center = QPointF(self.center_point.x(), self.center_point.y() + TR_HEIGHT/2)
+            self.label = ConnPntLabel(self.label_text, self.orientation, conn_point_center)
+        self.circle_rect = QRectF(conn_point_center.x() - TR_CONN_POINT_RAD,
+                                  conn_point_center.y() - TR_CONN_POINT_RAD,
+                                  2 * TR_CONN_POINT_RAD,
+                                  2 * TR_CONN_POINT_RAD)
+
+        self._pen = QPen(Qt.black)
+        self._pen.setWidthF(self.width)
+
+        self._base_path = QPainterPath()
+        self._base_path.addEllipse(circle_rect)
 
         self.setPath(self._base_path)
         self.setPen(self._pen)
@@ -197,79 +275,11 @@ class TopologyRectangle(QGraphicsItem):
         self._contour = ContourTR()
         self._contour.setParentItem(self)
 
-        # self.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable)
-#  | QGraphicsItem.ItemClipsChildrenToShape
-
-# class TopologyRectangle(QGraphicsPathItem):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#
-#         self._base_path = QPainterPath()
-#         # self._contour_path = QPainterPath()
-#         self._base_path.addRoundedRect(QRectF(0, 0, TR_WIDTH, TR_HEIGHT), TR_ROUNDING, TR_ROUNDING)
-#         self._base_path.addRect(QRectF(0, TR_HEADER_HEIGHT, TR_WIDTH, TR_HEIGHT - TR_HEADER_HEIGHT - TR_FOOTER_HEIGHT))
-#         times_font = QFont("Times", 40, QFont.Bold)
-#         fontMetrics = QFontMetrics(times_font)
-#         self._header_text = "Header"
-#         header_size = fontMetrics.size(0, self._header_text)
-#         # print("header width = ", fontMetrics.size(0, "Header").width())
-#         header_text_base_point = QPointF(TR_WIDTH/2 - header_size.width()/2, TR_HEADER_HEIGHT/2 + header_size.height()/2)
-#         self._base_path.addText(header_text_base_point, times_font, self._header_text)
-#
-#         self._pen = QPen(Qt.black)
-#         self._pen.setWidthF(TR_LINES_WIDTH)
-#
-#         self.setPath(self._base_path)
-#         self.setPen(self._pen)
-#         self.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable)
-#
-#         # self.base_path.addEllipse(-10, -10, 200, 300)
-#         # self.base_path.addEllipse(10, 10, 200, 300)
-#         # self.setBrush(QBrush(Qt.darkYellow))
-
 
 class CustomGC(QGraphicsScene):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        poly_1 = QPolygonF(
-                [
-                    QPointF(30, 60),
-                    QPointF(270, 40),
-                    QPointF(400, 200),
-                    QPointF(20, 150),
-                ])
-        poly_gr_1 = QGraphicsPolygonItem(poly_1)
-        poly_gr_1.setPen(QPen(Qt.darkGreen))
-        poly_gr_1.setBrush(QBrush(Qt.blue))
-        poly_gr_1.pos()
-        # poly_gr_1.dragMoveEvent.connect(self.dme)
-        poly_gr_1.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable)
-
-        poly_2 = QPolygonF(
-                [
-                    QPointF(600, 700),
-                    QPointF(600, 900),
-                    QPointF(800, 900),
-                ])
-        poly_gr_2 = QGraphicsPolygonItem(poly_2)
-        poly_gr_2.setPen(QPen(Qt.red))
-        poly_gr_2.setBrush(QBrush(Qt.darkYellow))
-        poly_gr_2.pos()
-        poly_gr_2.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable)
-
-        pp = QPainterPath()
-        pp.addEllipse(-10, -10, 200, 300)
-        pp.addEllipse(10, 10, 200, 300)
-        pp_gr = QGraphicsPathItem(pp)
-        pp_gr.setPen(QPen(Qt.red))
-        # pp_gr.setBrush(QBrush(Qt.darkYellow))
-        pp_gr.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable)
-
-        # tr = TopologyRectangle()  #
-        self.tr = TopologyRectangle()  #
-
-        self.addItem(poly_gr_1)
-        self.addItem(poly_gr_2)
+        self.tr = TopologyRectangle()
         self.addItem(self.tr)
 
         self.selectionChanged.connect(self.dme)
@@ -288,7 +298,7 @@ class CustomGC(QGraphicsScene):
         print("mousePressEvent", pos.x(), pos.y())
         print("items_at", self.items(pos))
         super().mousePressEvent(e)
-# sdsd
+
     def mouseReleaseEvent(self, e: QGraphicsSceneMouseEvent):
         print("mouseReleaseEvent", e.pos().x(), e.pos().y())
         super().mouseReleaseEvent(e)
@@ -340,7 +350,7 @@ class CustomMW(QMainWindow):
         flip_h_action.setShortcut("Ctrl+H")
         flip_h_action.triggered.connect(self.scene.flip_horizontal)
         flip_v_action = item_menu.addAction("&Flip vertical")
-        flip_v_action.setShortcut("Ctrl+G")
+        flip_v_action.setShortcut("Ctrl+J")
         flip_v_action.triggered.connect(self.scene.flip_vertical)
 
 
