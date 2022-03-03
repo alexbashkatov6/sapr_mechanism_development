@@ -288,7 +288,7 @@ class CustomGC(QGraphicsScene):
         print("mousePressEvent", pos.x(), pos.y())
         print("items_at", self.items(pos))
         super().mousePressEvent(e)
-
+# sdsd
     def mouseReleaseEvent(self, e: QGraphicsSceneMouseEvent):
         print("mouseReleaseEvent", e.pos().x(), e.pos().y())
         super().mouseReleaseEvent(e)
